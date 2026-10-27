@@ -1,0 +1,400 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe | Game Zone</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: #101525;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 440px;
+            text-align: center;
+            background: #1a2238;
+            padding: 28px 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 35px #0005;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            color: #45e6ff;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: #b9c4df;
+            margin-bottom: 22px;
+        }
+
+        .home-button, .reset-button, .mode-button {
+            border: none;
+            border-radius: 9px;
+            padding: 11px 14px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .home-button {
+            display: inline-block;
+            background: #303b58;
+            color: white;
+            text-decoration: none;
+            margin-bottom: 20px;
+        }
+
+        .mode-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .mode-button {
+            flex: 1;
+            background: #303b58;
+            color: white;
+        }
+
+        .mode-button.active {
+            background: #45e6ff;
+            color: #101525;
+        }
+
+        #status {
+            min-height: 26px;
+            margin: 15px 0;
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffe66d;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 20px auto;
+        }
+
+        .cell {
+            aspect-ratio: 1;
+            border: 2px solid #34415f;
+            border-radius: 12px;
+            background: #101525;
+            color: #45e6ff;
+            font-size: clamp(42px, 13vw, 64px);
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .cell:nth-child(even) {
+            color: #ff6fbb;
+        }
+
+        .cell:disabled {
+            cursor: default;
+        }
+
+        .cell.winner {
+            background: #214b4a;
+            border-color: #45e6a0;
+        }
+
+        .reset-button {
+            width: 100%;
+            padding: 14px;
+            background: #ff6fbb;
+            color: #101525;
+            font-size: 16px;
+        }
+
+        .instructions {
+            margin-top: 20px;
+            color: #b9c4df;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        button:focus-visible, a:focus-visible {
+            outline: 3px solid white;
+            outline-offset: 3px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <main class="game-container">
+
+        <a class="home-button" href="index.html">
+            ← Back to Game Zone
+        </a>
+
+        <h1>TIC-TAC-TOE</h1>
+        <p class="subtitle">Think smart. Make your move!</p>
+
+        <div class="mode-buttons">
+            <button class="mode-button active" id="computerMode">
+                Vs Computer
+            </button>
+
+            <button class="mode-button" id="twoPlayerMode">
+                2 Players
+            </button>
+        </div>
+
+        <p id="status" aria-live="polite">Your turn (X)!</p>
+
+        <div class="board" id="board">
+            <button class="cell" data-index="0" aria-label="Cell 1"></button>
+            <button class="cell" data-index="1" aria-label="Cell 2"></button>
+            <button class="cell" data-index="2" aria-label="Cell 3"></button>
+            <button class="cell" data-index="3" aria-label="Cell 4"></button>
+            <button class="cell" data-index="4" aria-label="Cell 5"></button>
+            <button class="cell" data-index="5" aria-label="Cell 6"></button>
+            <button class="cell" data-index="6" aria-label="Cell 7"></button>
+            <button class="cell" data-index="7" aria-label="Cell 8"></button>
+            <button class="cell" data-index="8" aria-label="Cell 9"></button>
+        </div>
+
+        <button class="reset-button" id="resetButton">
+            ↻ Restart Game
+        </button>
+
+        <p class="instructions">
+            Get three Xs or Os in a row to win.<br>
+            Play against the computer or challenge a friend!
+        </p>
+
+    </main>
+
+    <script>
+        const cells = document.querySelectorAll(".cell");
+        const statusText = document.getElementById("status");
+        const resetButton = document.getElementById("resetButton");
+        const computerModeButton = document.getElementById("computerMode");
+        const twoPlayerModeButton = document.getElementById("twoPlayerMode");
+
+        const winningLines = [
+            [0, 1, 2],
+            [3, 4, 5],
+            [6, 7, 8],
+            [0, 3, 6],
+            [1, 4, 7],
+            [2, 5, 8],
+            [0, 4, 8],
+            [2, 4, 6]
+        ];
+
+        let board = ["", "", "", "", "", "", "", "", ""];
+        let currentPlayer = "X";
+        let gameOver = false;
+        let playAgainstComputer = true;
+
+        function findWinningLine(player) {
+            return winningLines.find(line =>
+                line.every(index => board[index] === player)
+            );
+        }
+
+        function updateBoard() {
+            cells.forEach((cell, index) => {
+                cell.textContent = board[index];
+                cell.disabled = gameOver || board[index] !== "" ||
+                    (playAgainstComputer && currentPlayer === "O");
+
+                cell.classList.remove("winner");
+            });
+        }
+
+        function finishGame() {
+            const winningLine = findWinningLine("X") ||
+                                findWinningLine("O");
+
+            if (winningLine) {
+                const winner = board[winningLine[0]];
+
+                gameOver = true;
+
+                if (playAgainstComputer && winner === "O") {
+                    statusText.textContent = "Computer wins! 🤖";
+                } else {
+                    statusText.textContent = winner + " wins! 🎉";
+                }
+
+                winningLine.forEach(index => {
+                    cells[index].classList.add("winner");
+                });
+
+                updateBoard();
+                return true;
+            }
+
+            if (board.every(cell => cell !== "")) {
+                gameOver = true;
+                statusText.textContent = "It's a draw! 🤝";
+                updateBoard();
+                return true;
+            }
+
+            return false;
+        }
+
+        function makeMove(index) {
+            if (gameOver || board[index] !== "") {
+                return;
+            }
+
+            if (playAgainstComputer && currentPlayer === "O") {
+                return;
+            }
+
+            board[index] = currentPlayer;
+
+            if (finishGame()) {
+                return;
+            }
+
+            currentPlayer = currentPlayer === "X" ? "O" : "X";
+
+            if (playAgainstComputer && currentPlayer === "O") {
+                statusText.textContent = "Computer is thinking...";
+                updateBoard();
+
+                window.setTimeout(computerMove, 400);
+            } else {
+                statusText.textContent =
+                    playAgainstComputer ? "Your turn (X)!" :
+                    "Player " + currentPlayer + "'s turn!";
+                updateBoard();
+            }
+        }
+
+        function computerMove() {
+            if (gameOver || !playAgainstComputer ||
+                currentPlayer !== "O") {
+                return;
+            }
+
+            // First, win if possible.
+            let move = findBestMove("O");
+
+            // Otherwise, block the player's winning move.
+            if (move === -1) {
+                move = findBestMove("X");
+            }
+
+            // Prefer the center square.
+            if (move === -1 && board[4] === "") {
+                move = 4;
+            }
+
+            // Otherwise, choose a random available corner or square.
+            if (move === -1) {
+                const available = board
+                    .map((value, index) => value === "" ? index : -1)
+                    .filter(index => index !== -1);
+
+                if (available.length > 0) {
+                    move = available[
+                        Math.floor(Math.random() * available.length)
+                    ];
+                }
+            }
+
+            if (move === -1) {
+                return;
+            }
+
+            board[move] = "O";
+
+            if (finishGame()) {
+                return;
+            }
+
+            currentPlayer = "X";
+            statusText.textContent = "Your turn (X)!";
+            updateBoard();
+        }
+
+        function findBestMove(player) {
+            for (let i = 0; i < board.length; i++) {
+                if (board[i] === "") {
+                    board[i] = player;
+                    const wins = findWinningLine(player);
+                    board[i] = "";
+
+                    if (wins) {
+                        return i;
+                    }
+                }
+            }
+
+            return -1;
+        }
+
+        function restartGame() {
+            board = ["", "", "", "", "", "", "", "", ""];
+            currentPlayer = "X";
+            gameOver = false;
+
+            statusText.textContent = playAgainstComputer
+                ? "Your turn (X)!"
+                : "Player X's turn!";
+
+            updateBoard();
+        }
+
+        function setMode(computerMode) {
+            playAgainstComputer = computerMode;
+
+            computerModeButton.classList.toggle(
+                "active", computerMode
+            );
+
+            twoPlayerModeButton.classList.toggle(
+                "active", !computerMode
+            );
+
+            restartGame();
+        }
+
+        cells.forEach(cell => {
+            cell.addEventListener("click", () => {
+                const index = Number(cell.dataset.index);
+                makeMove(index);
+            });
+        });
+
+        resetButton.addEventListener("click", restartGame);
+
+        computerModeButton.addEventListener("click", () => {
+            setMode(true);
+        });
+
+        twoPlayerModeButton.addEventListener("click", () => {
+            setMode(false);
+        });
+
+        updateBoard();
+    </script>
+
+</body>
+</html>

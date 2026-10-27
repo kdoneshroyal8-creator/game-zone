@@ -1,0 +1,3811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Challenge | Game Zone</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; padding: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: Arial, sans-serif; background: #101525; color: white;
+    }
+    .quiz-container {
+      width: 100%; max-width: 650px; padding: 28px;
+      border-radius: 20px; background: #1a2238; box-shadow: 0 10px 35px #0005;
+    }
+    h1 { margin: 0 0 8px; text-align: center; color: #45e6ff; }
+    .subtitle { margin: 0 0 22px; text-align: center; color: #b9c4df; }
+    .home-button {
+      display: inline-block; margin-bottom: 18px; padding: 10px 14px;
+      border-radius: 8px; background: #303b58; color: white; text-decoration: none;
+    }
+    .meta { display: flex; justify-content: space-between; gap: 12px; color: #ffe66d; font-weight: bold; }
+    .progress-track { height: 8px; margin: 16px 0 24px; overflow: hidden; border-radius: 10px; background: #303b58; }
+    .progress-bar { width: 0; height: 100%; background: #45e6ff; transition: width .25s; }
+    #question { font-size: 21px; line-height: 1.5; }
+    #category { color: #45e6ff; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+    .options { display: grid; gap: 12px; margin: 22px 0; }
+    .option {
+      width: 100%; padding: 15px; border: 2px solid #34415f; border-radius: 10px;
+      background: #101525; color: white; text-align: left; font-size: 16px; cursor: pointer;
+    }
+    .option:hover:not(:disabled) { border-color: #45e6ff; }
+    .option:disabled { cursor: default; }
+    .option.correct { background: #174b3b; border-color: #45e6a0; }
+    .option.wrong { background: #572b3b; border-color: #ff6f85; }
+    #feedback { min-height: 24px; line-height: 1.5; font-weight: bold; }
+    .main-button {
+      width: 100%; padding: 14px; border: 0; border-radius: 10px;
+      background: #45e6ff; color: #101525; font-size: 16px; font-weight: bold; cursor: pointer;
+    }
+    .main-button:disabled { opacity: .55; cursor: not-allowed; }
+    .hidden { display: none !important; }
+    #result { text-align: center; }
+    #final-score { margin: 22px 0; color: #ffe66d; font-size: 42px; font-weight: bold; }
+    .note { margin: 20px 0 0; color: #b9c4df; text-align: center; font-size: 13px; line-height: 1.5; }
+    button:focus-visible, a:focus-visible { outline: 3px solid white; outline-offset: 3px; }
+    @media (max-width: 450px) { .quiz-container { padding: 20px; } #question { font-size: 19px; } }
+  </style>
+</head>
+<body>
+  <main class="quiz-container">
+    <a href="index.html" class="home-button">← Back to Game Zone</a>
+    <h1>🧠 Quiz Challenge</h1>
+    <p class="subtitle">300 questions in the bank. 10 questions per round!</p>
+
+    <section id="quiz-screen">
+      <div class="meta">
+        <span id="question-count">Question 1/10</span>
+        <span id="score">Score: 0</span>
+      </div>
+      <div class="progress-track" aria-label="Quiz progress">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div id="category"></div>
+      <h2 id="question"></h2>
+      <div class="options" id="options"></div>
+      <p id="feedback" aria-live="polite"></p>
+      <button class="main-button" id="next-button" disabled>Choose an answer</button>
+    </section>
+
+    <section id="result" class="hidden">
+      <h2>🏆 Round Completed!</h2>
+      <p>Your final score</p>
+      <div id="final-score">0/100</div>
+      <p id="result-message"></p>
+      <button class="main-button" id="play-again">↻ Play Again (New Shuffle)</button>
+    </section>
+    <p class="note">10 questions · 10 points per correct answer · Maximum score: 100</p>
+  </main>
+
+  <script>
+const QUESTION_BANK = [
+  {
+    "category": "Gaming",
+    "question": "Which company created the Mario franchise?",
+    "options": [
+      "Nintendo",
+      "Sega",
+      "Sony",
+      "Atari"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Nintendo."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which game features the character Steve?",
+    "options": [
+      "Minecraft",
+      "Fortnite",
+      "Roblox",
+      "Terraria"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Minecraft."
+  },
+  {
+    "category": "Gaming",
+    "question": "What is the main goal in Tetris?",
+    "options": [
+      "Arrange falling blocks",
+      "Race cars",
+      "Build a city",
+      "Catch creatures"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Arrange falling blocks."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which company develops the PlayStation console?",
+    "options": [
+      "Sony",
+      "Microsoft",
+      "Nintendo",
+      "Valve"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Sony."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which company makes the Xbox console?",
+    "options": [
+      "Microsoft",
+      "Sony",
+      "Sega",
+      "Ubisoft"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Microsoft."
+  },
+  {
+    "category": "Gaming",
+    "question": "In chess, which piece moves in an L shape?",
+    "options": [
+      "Knight",
+      "Bishop",
+      "Rook",
+      "Queen"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Knight."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which game series features Master Chief?",
+    "options": [
+      "Halo",
+      "God of War",
+      "Uncharted",
+      "Gran Turismo"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Halo."
+  },
+  {
+    "category": "Gaming",
+    "question": "What does NPC commonly stand for in games?",
+    "options": [
+      "Non-player character",
+      "New playable challenge",
+      "Network power control",
+      "Next player choice"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Non-player character."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which game features the island called Fortnite Island in its battle royale mode?",
+    "options": [
+      "Fortnite",
+      "Minecraft",
+      "Overwatch",
+      "Valorant"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Fortnite."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which company developed the original Sonic the Hedgehog games?",
+    "options": [
+      "Sega",
+      "Nintendo",
+      "Capcom",
+      "Electronic Arts"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Sega."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which genre typically involves solving puzzles and exploring a story?",
+    "options": [
+      "Adventure",
+      "Racing",
+      "Sports simulation",
+      "Rhythm only"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Adventure."
+  },
+  {
+    "category": "Gaming",
+    "question": "What is a game save used for?",
+    "options": [
+      "Preserving progress",
+      "Increasing screen brightness",
+      "Connecting a controller",
+      "Installing speakers"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Preserving progress."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which game series features the city of Los Santos?",
+    "options": [
+      "Grand Theft Auto",
+      "The Sims",
+      "Forza Horizon",
+      "Animal Crossing"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Grand Theft Auto."
+  },
+  {
+    "category": "Gaming",
+    "question": "What does LAN stand for in multiplayer gaming?",
+    "options": [
+      "Local Area Network",
+      "Long Access Number",
+      "Live Action Mode",
+      "Linked Audio Node"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Local Area Network."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which game is known for building with blocks in a 3D world?",
+    "options": [
+      "Minecraft",
+      "FIFA",
+      "Pac-Man",
+      "Street Fighter"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Minecraft."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which game features yellow pellets and a character pursued by ghosts?",
+    "options": [
+      "Pac-Man",
+      "Space Invaders",
+      "Donkey Kong",
+      "Asteroids"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Pac-Man."
+  },
+  {
+    "category": "Gaming",
+    "question": "What is a joystick mainly used for?",
+    "options": [
+      "Controlling movement or direction",
+      "Printing documents",
+      "Charging a laptop",
+      "Recording sound"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Controlling movement or direction."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which genre focuses on driving vehicles in competitions?",
+    "options": [
+      "Racing",
+      "Stealth",
+      "Puzzle",
+      "Fighting"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Racing."
+  },
+  {
+    "category": "Gaming",
+    "question": "What is a tutorial in a video game?",
+    "options": [
+      "An introduction to controls and mechanics",
+      "The final credits",
+      "A multiplayer ranking",
+      "A hardware update"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is An introduction to controls and mechanics."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which game series features Pokémon creatures?",
+    "options": [
+      "Pokémon",
+      "Digimon World only",
+      "The Legend of Zelda",
+      "Final Fantasy"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Pokémon."
+  },
+  {
+    "category": "Gaming",
+    "question": "What does co-op gameplay mean?",
+    "options": [
+      "Players cooperate together",
+      "Players cannot move",
+      "Only one person can play",
+      "The game has no objectives"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Players cooperate together."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which device is commonly used to move a game character on a PC?",
+    "options": [
+      "Keyboard",
+      "Printer",
+      "Scanner",
+      "Microphone"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Keyboard."
+  },
+  {
+    "category": "Gaming",
+    "question": "What is a leaderboard used to show?",
+    "options": [
+      "Player rankings or scores",
+      "Game installation files",
+      "Controller battery chemistry",
+      "Sound effects"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Player rankings or scores."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which game series features Link as a central hero?",
+    "options": [
+      "The Legend of Zelda",
+      "Halo",
+      "Tekken",
+      "The Sims"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is The Legend of Zelda."
+  },
+  {
+    "category": "Gaming",
+    "question": "What does FPS commonly mean as a game genre?",
+    "options": [
+      "First-person shooter",
+      "Fast puzzle strategy",
+      "Fantasy player simulator",
+      "Final power score"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is First-person shooter."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which fictional kingdom appears in Baahubali?",
+    "options": [
+      "Mahishmati",
+      "Wakanda",
+      "Asgard",
+      "Gotham"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Mahishmati."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Who directed the Indian film RRR?",
+    "options": [
+      "S. S. Rajamouli",
+      "Sukumar",
+      "Mani Ratnam",
+      "Lokesh Kanagaraj"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is S. S. Rajamouli."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which film series features the character Jack Sparrow?",
+    "options": [
+      "Pirates of the Caribbean",
+      "The Lord of the Rings",
+      "Mission: Impossible",
+      "Jurassic Park"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Pirates of the Caribbean."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "What is the name of the school attended by Harry Potter?",
+    "options": [
+      "Hogwarts",
+      "Narnia Academy",
+      "Starfleet Academy",
+      "Nevermore University"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Hogwarts."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which animated film features a clownfish named Marlin?",
+    "options": [
+      "Finding Nemo",
+      "Toy Story",
+      "Cars",
+      "Up"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Finding Nemo."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which superhero is also known as the Dark Knight?",
+    "options": [
+      "Batman",
+      "Superman",
+      "Aquaman",
+      "Flash"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Batman."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which Indian film features the song and dance sequence 'Naatu Naatu'?",
+    "options": [
+      "RRR",
+      "Baahubali 2",
+      "Pushpa",
+      "Jawan"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is RRR."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Who is the main toy cowboy in Toy Story?",
+    "options": [
+      "Woody",
+      "Buzz Lightyear",
+      "Rex",
+      "Forky"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Woody."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which film features dinosaurs brought back through genetic engineering?",
+    "options": [
+      "Jurassic Park",
+      "Titanic",
+      "The Martian",
+      "Jumanji"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Jurassic Park."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which fictional city is associated with Batman?",
+    "options": [
+      "Gotham City",
+      "Metropolis",
+      "Central City",
+      "Star City"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Gotham City."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which movie franchise features the wizard Gandalf?",
+    "options": [
+      "The Lord of the Rings",
+      "Harry Potter",
+      "The Matrix",
+      "Avatar"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is The Lord of the Rings."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which character is known for saying 'I am Groot' in Marvel films?",
+    "options": [
+      "Groot",
+      "Rocket",
+      "Thor",
+      "Loki"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Groot."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which Indian film series includes the character Pushpa Raj?",
+    "options": [
+      "Pushpa",
+      "K.G.F.",
+      "Singham",
+      "Drishyam"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Pushpa."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which film features the blue Na'vi people of Pandora?",
+    "options": [
+      "Avatar",
+      "Dune",
+      "Interstellar",
+      "Gravity"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Avatar."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which superhero uses a shield made of vibranium?",
+    "options": [
+      "Captain America",
+      "Iron Man",
+      "Hawkeye",
+      "Doctor Strange"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Captain America."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "What kind of animal is Dumbo?",
+    "options": [
+      "Elephant",
+      "Mouse",
+      "Dog",
+      "Lion"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Elephant."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which movie features a ship called the Titanic?",
+    "options": [
+      "Titanic",
+      "Cast Away",
+      "Poseidon",
+      "The Abyss"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Titanic."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which character is a snowman in Frozen?",
+    "options": [
+      "Olaf",
+      "Sven",
+      "Kristoff",
+      "Hans"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Olaf."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which film franchise features Ethan Hunt?",
+    "options": [
+      "Mission: Impossible",
+      "Fast & Furious",
+      "Rocky",
+      "John Wick"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Mission: Impossible."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which studio created the animated film Toy Story?",
+    "options": [
+      "Pixar",
+      "DreamWorks Animation",
+      "Studio Ghibli",
+      "Laika"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Pixar."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which Indian actor played the title role in the film Baahubali?",
+    "options": [
+      "Prabhas",
+      "Allu Arjun",
+      "Ram Charan",
+      "Nani"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Prabhas."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which movie features a robot named WALL-E?",
+    "options": [
+      "WALL-E",
+      "Cars",
+      "Ratatouille",
+      "Coco"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is WALL-E."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which superhero is associated with the fictional country Wakanda?",
+    "options": [
+      "Black Panther",
+      "Ant-Man",
+      "Daredevil",
+      "Green Lantern"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Black Panther."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which film series features the character Indiana Jones?",
+    "options": [
+      "Indiana Jones",
+      "The Hunger Games",
+      "Transformers",
+      "Mad Max"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Indiana Jones."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which movie features a magical nanny named Mary Poppins?",
+    "options": [
+      "Mary Poppins",
+      "Matilda",
+      "Annie",
+      "The Parent Trap"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Mary Poppins."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which planet is known as the Red Planet?",
+    "options": [
+      "Mars",
+      "Venus",
+      "Jupiter",
+      "Mercury"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Mars."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which gas do plants absorb for photosynthesis?",
+    "options": [
+      "Carbon dioxide",
+      "Oxygen",
+      "Helium",
+      "Hydrogen"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Carbon dioxide."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is the closest star to Earth?",
+    "options": [
+      "The Sun",
+      "Sirius",
+      "Polaris",
+      "Proxima Centauri"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is The Sun."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which organ pumps blood around the human body?",
+    "options": [
+      "Heart",
+      "Liver",
+      "Lung",
+      "Kidney"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Heart."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is H2O commonly known as?",
+    "options": [
+      "Water",
+      "Hydrogen peroxide",
+      "Salt",
+      "Oxygen"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Water."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which planet is the largest in our solar system?",
+    "options": [
+      "Jupiter",
+      "Earth",
+      "Mars",
+      "Neptune"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Jupiter."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What force pulls objects toward Earth?",
+    "options": [
+      "Gravity",
+      "Magnetism",
+      "Friction",
+      "Buoyancy"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Gravity."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is the center of an atom called?",
+    "options": [
+      "Nucleus",
+      "Cell wall",
+      "Core shell",
+      "Electron cloud"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Nucleus."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which part of a plant usually absorbs water from soil?",
+    "options": [
+      "Roots",
+      "Flowers",
+      "Fruits",
+      "Petals"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Roots."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which gas do humans need for aerobic respiration?",
+    "options": [
+      "Oxygen",
+      "Carbon dioxide",
+      "Neon",
+      "Methane"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Oxygen."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is the boiling point of water at sea level in Celsius?",
+    "options": [
+      "100°C",
+      "50°C",
+      "0°C",
+      "150°C"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 100°C."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which planet is famous for its prominent rings?",
+    "options": [
+      "Saturn",
+      "Mercury",
+      "Earth",
+      "Mars"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Saturn."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is the chemical symbol for gold?",
+    "options": [
+      "Au",
+      "Ag",
+      "Gd",
+      "Go"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Au."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which natural satellite orbits Earth?",
+    "options": [
+      "The Moon",
+      "Europa",
+      "Titan",
+      "Phobos"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is The Moon."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is the basic unit of life?",
+    "options": [
+      "Cell",
+      "Atom",
+      "Organ",
+      "Tissue"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Cell."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which instrument measures temperature?",
+    "options": [
+      "Thermometer",
+      "Barometer",
+      "Compass",
+      "Hygrometer"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Thermometer."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which blood cells help fight infection?",
+    "options": [
+      "White blood cells",
+      "Red blood cells",
+      "Platelets",
+      "Plasma cells only"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is White blood cells."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is the process by which liquid becomes gas called?",
+    "options": [
+      "Evaporation",
+      "Freezing",
+      "Condensation",
+      "Deposition"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Evaporation."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which planet is closest to the Sun?",
+    "options": [
+      "Mercury",
+      "Venus",
+      "Earth",
+      "Mars"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Mercury."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is the chemical symbol for oxygen?",
+    "options": [
+      "O",
+      "Ox",
+      "Og",
+      "Om"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is O."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which part of the human body is primarily responsible for breathing?",
+    "options": [
+      "Lungs",
+      "Stomach",
+      "Spleen",
+      "Pancreas"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Lungs."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What do bees collect from flowers to help make honey?",
+    "options": [
+      "Nectar",
+      "Sand",
+      "Tree bark",
+      "Salt water"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Nectar."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which state of matter has a fixed volume but no fixed shape?",
+    "options": [
+      "Liquid",
+      "Solid",
+      "Gas",
+      "Plasma only"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Liquid."
+  },
+  {
+    "category": "Science & Space",
+    "question": "How many bones are typically in an adult human body?",
+    "options": [
+      "206",
+      "106",
+      "306",
+      "406"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 206."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which galaxy contains our solar system?",
+    "options": [
+      "Milky Way",
+      "Andromeda only",
+      "Whirlpool",
+      "Sombrero"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Milky Way."
+  },
+  {
+    "category": "Sports",
+    "question": "How many players from one cricket team are on the field during normal play?",
+    "options": [
+      "11",
+      "9",
+      "10",
+      "12"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 11."
+  },
+  {
+    "category": "Sports",
+    "question": "How many rings appear on the Olympic symbol?",
+    "options": [
+      "5",
+      "4",
+      "6",
+      "7"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 5."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport uses a shuttlecock?",
+    "options": [
+      "Badminton",
+      "Tennis",
+      "Squash",
+      "Table tennis"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Badminton."
+  },
+  {
+    "category": "Sports",
+    "question": "How many points is a touchdown worth in American football before any conversion?",
+    "options": [
+      "6",
+      "3",
+      "1",
+      "7"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 6."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport is played at Wimbledon?",
+    "options": [
+      "Tennis",
+      "Cricket",
+      "Golf",
+      "Rugby"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Tennis."
+  },
+  {
+    "category": "Sports",
+    "question": "How long is a standard outdoor football match, excluding added time and extra time?",
+    "options": [
+      "90 minutes",
+      "60 minutes",
+      "80 minutes",
+      "100 minutes"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 90 minutes."
+  },
+  {
+    "category": "Sports",
+    "question": "In basketball, how many points is a shot made from beyond the three-point line worth?",
+    "options": [
+      "3",
+      "1",
+      "2",
+      "4"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 3."
+  },
+  {
+    "category": "Sports",
+    "question": "Which country hosted the first modern Olympic Games in 1896?",
+    "options": [
+      "Greece",
+      "France",
+      "Italy",
+      "United Kingdom"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Greece."
+  },
+  {
+    "category": "Sports",
+    "question": "What is the object hit in ice hockey called?",
+    "options": [
+      "Puck",
+      "Shuttlecock",
+      "Balloon",
+      "Disc golf"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Puck."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport uses terms like birdie and eagle?",
+    "options": [
+      "Golf",
+      "Boxing",
+      "Volleyball",
+      "Swimming"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Golf."
+  },
+  {
+    "category": "Sports",
+    "question": "How many players per team are on court in standard indoor volleyball?",
+    "options": [
+      "6",
+      "5",
+      "7",
+      "8"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 6."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport features a pommel horse?",
+    "options": [
+      "Artistic gymnastics",
+      "Fencing",
+      "Rowing",
+      "Archery"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Artistic gymnastics."
+  },
+  {
+    "category": "Sports",
+    "question": "What color card usually signals a player is sent off in football?",
+    "options": [
+      "Red",
+      "Blue",
+      "Green",
+      "White"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Red."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport uses a bat, ball, wickets and overs?",
+    "options": [
+      "Cricket",
+      "Baseball only",
+      "Hockey",
+      "Handball"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Cricket."
+  },
+  {
+    "category": "Sports",
+    "question": "In chess, what is the move called when the king is under direct attack?",
+    "options": [
+      "Check",
+      "Castle",
+      "En passant",
+      "Promotion"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Check."
+  },
+  {
+    "category": "Sports",
+    "question": "Which race is traditionally run over 42.195 kilometres?",
+    "options": [
+      "Marathon",
+      "Sprint",
+      "Hurdles",
+      "Relay 4 × 100 m"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Marathon."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport uses a net, a table and a lightweight ball?",
+    "options": [
+      "Table tennis",
+      "Badminton",
+      "Squash",
+      "Lawn bowls"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Table tennis."
+  },
+  {
+    "category": "Sports",
+    "question": "How many players from one team are on the court in standard basketball?",
+    "options": [
+      "5",
+      "6",
+      "7",
+      "11"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 5."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport is associated with the Tour de France?",
+    "options": [
+      "Cycling",
+      "Motor racing",
+      "Sailing",
+      "Horse racing"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Cycling."
+  },
+  {
+    "category": "Sports",
+    "question": "What is the maximum score with one dart in standard darts?",
+    "options": [
+      "60",
+      "50",
+      "100",
+      "25"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 60."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport is played with clubs and a small ball on a course of holes?",
+    "options": [
+      "Golf",
+      "Polo",
+      "Croquet",
+      "Lacrosse"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Golf."
+  },
+  {
+    "category": "Sports",
+    "question": "In football, what is it called when a player scores three goals in one match?",
+    "options": [
+      "Hat-trick",
+      "Grand slam",
+      "Triple-double",
+      "Clean sheet"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Hat-trick."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport features a scrum?",
+    "options": [
+      "Rugby",
+      "Tennis",
+      "Swimming",
+      "Badminton"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Rugby."
+  },
+  {
+    "category": "Sports",
+    "question": "How many minutes are in a standard rugby union match, excluding stoppages?",
+    "options": [
+      "80",
+      "60",
+      "70",
+      "90"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 80."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport is played on a court with a hoop and backboard?",
+    "options": [
+      "Basketball",
+      "Volleyball",
+      "Handball",
+      "Netball only"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Basketball."
+  },
+  {
+    "category": "India & Geography",
+    "question": "What is the capital of India?",
+    "options": [
+      "New Delhi",
+      "Mumbai",
+      "Chennai",
+      "Kolkata"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is New Delhi."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which is the largest Indian state by area?",
+    "options": [
+      "Rajasthan",
+      "Uttar Pradesh",
+      "Maharashtra",
+      "Madhya Pradesh"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Rajasthan."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which river flows through Varanasi?",
+    "options": [
+      "Ganga",
+      "Godavari",
+      "Narmada",
+      "Kaveri"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Ganga."
+  },
+  {
+    "category": "India & Geography",
+    "question": "What is the national animal of India?",
+    "options": [
+      "Bengal tiger",
+      "Asiatic lion",
+      "Elephant",
+      "Leopard"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Bengal tiger."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which monument is located in Agra?",
+    "options": [
+      "Taj Mahal",
+      "India Gate",
+      "Charminar",
+      "Gateway of India"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Taj Mahal."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which Indian state is famous for its backwaters around Alappuzha?",
+    "options": [
+      "Kerala",
+      "Punjab",
+      "Haryana",
+      "Sikkim"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Kerala."
+  },
+  {
+    "category": "India & Geography",
+    "question": "What is the currency of India?",
+    "options": [
+      "Indian rupee",
+      "Taka",
+      "Rial",
+      "Yen"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Indian rupee."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which ocean lies south of India?",
+    "options": [
+      "Indian Ocean",
+      "Arctic Ocean",
+      "Southern Ocean only",
+      "Atlantic Ocean"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Indian Ocean."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which city is often called India's Silicon Valley?",
+    "options": [
+      "Bengaluru",
+      "Jaipur",
+      "Patna",
+      "Lucknow"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Bengaluru."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which Indian festival is widely known as the festival of lights?",
+    "options": [
+      "Diwali",
+      "Holi",
+      "Pongal",
+      "Baisakhi"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Diwali."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which is the highest mountain in the world above sea level?",
+    "options": [
+      "Mount Everest",
+      "K2",
+      "Kangchenjunga",
+      "Lhotse"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Mount Everest."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which country is directly north of India in the Himalayan region?",
+    "options": [
+      "Nepal",
+      "Maldives",
+      "Sri Lanka",
+      "Mauritius"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Nepal."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which Indian state has Hyderabad as its capital?",
+    "options": [
+      "Telangana",
+      "Gujarat",
+      "Odisha",
+      "Assam"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Telangana."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which is the smallest continent by land area?",
+    "options": [
+      "Australia",
+      "Europe",
+      "Antarctica",
+      "South America"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Australia."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which desert is mainly located in Rajasthan?",
+    "options": [
+      "Thar Desert",
+      "Sahara",
+      "Gobi",
+      "Atacama"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Thar Desert."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which Indian city is famous for the Charminar?",
+    "options": [
+      "Hyderabad",
+      "Pune",
+      "Surat",
+      "Bhopal"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Hyderabad."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which Indian state is known for the Hornbill Festival?",
+    "options": [
+      "Nagaland",
+      "Goa",
+      "Bihar",
+      "Kerala"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Nagaland."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which line divides Earth into Northern and Southern Hemispheres?",
+    "options": [
+      "Equator",
+      "Prime Meridian",
+      "Tropic of Cancer",
+      "International Date Line"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Equator."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which country is home to the Great Wall?",
+    "options": [
+      "China",
+      "Japan",
+      "Thailand",
+      "Mongolia only"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is China."
+  },
+  {
+    "category": "India & Geography",
+    "question": "What is the capital of Japan?",
+    "options": [
+      "Tokyo",
+      "Kyoto",
+      "Osaka",
+      "Nagoya"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Tokyo."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which is the largest ocean on Earth?",
+    "options": [
+      "Pacific Ocean",
+      "Atlantic Ocean",
+      "Indian Ocean",
+      "Arctic Ocean"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Pacific Ocean."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which Indian state is especially associated with the classical dance form Kathakali?",
+    "options": [
+      "Kerala",
+      "Punjab",
+      "Himachal Pradesh",
+      "Tripura"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Kerala."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which city is famous for the Golden Temple?",
+    "options": [
+      "Amritsar",
+      "Agra",
+      "Mysuru",
+      "Kochi"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Amritsar."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which country has the city of Cairo as its capital?",
+    "options": [
+      "Egypt",
+      "Morocco",
+      "Jordan",
+      "Sudan"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Egypt."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which Indian national holiday is celebrated on 26 January?",
+    "options": [
+      "Republic Day",
+      "Independence Day",
+      "Gandhi Jayanti",
+      "Children's Day"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Republic Day."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "How many sides does a hexagon have?",
+    "options": [
+      "6",
+      "5",
+      "7",
+      "8"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 6."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What does CPU stand for?",
+    "options": [
+      "Central Processing Unit",
+      "Computer Power Utility",
+      "Core Program Upload",
+      "Central Program User"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Central Processing Unit."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which device is used to point and click on most desktop computers?",
+    "options": [
+      "Mouse",
+      "Speaker",
+      "Router",
+      "Webcam"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Mouse."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What does WWW stand for?",
+    "options": [
+      "World Wide Web",
+      "Wide World Window",
+      "Web World Wire",
+      "World Web Watch"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is World Wide Web."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which file extension is commonly used for a web page?",
+    "options": [
+      ".html",
+      ".mp3",
+      ".jpg",
+      ".exe"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is .html."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What is the main purpose of a password?",
+    "options": [
+      "Help protect access to an account",
+      "Increase screen size",
+      "Speed up a fan",
+      "Store electricity"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Help protect access to an account."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which of these is a web browser?",
+    "options": [
+      "Firefox",
+      "Excel",
+      "Photoshop",
+      "Notepad"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Firefox."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "How many days are in a leap year?",
+    "options": [
+      "366",
+      "365",
+      "364",
+      "367"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 366."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "How many minutes are in one hour?",
+    "options": [
+      "60",
+      "30",
+      "90",
+      "100"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 60."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which language is commonly used to style web pages?",
+    "options": [
+      "CSS",
+      "HTML only",
+      "SQL",
+      "Bash only"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is CSS."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which language adds interactivity to many web pages?",
+    "options": [
+      "JavaScript",
+      "CSS",
+      "Markdown",
+      "XML only"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is JavaScript."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What does URL identify?",
+    "options": [
+      "An address of a resource on the web",
+      "A computer's battery level",
+      "A keyboard layout",
+      "A type of printer"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is An address of a resource on the web."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which unit is commonly used to measure digital file size?",
+    "options": [
+      "Byte",
+      "Litre",
+      "Watt-hour only",
+      "Metre"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Byte."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What does USB commonly stand for?",
+    "options": [
+      "Universal Serial Bus",
+      "United System Board",
+      "User Storage Base",
+      "Universal Signal Battery"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Universal Serial Bus."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which of these is a spreadsheet application?",
+    "options": [
+      "Microsoft Excel",
+      "VLC Media Player",
+      "Paint",
+      "Audacity"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Microsoft Excel."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What is phishing?",
+    "options": [
+      "A deceptive attempt to steal information",
+      "A method of cooling a CPU",
+      "A way to compress images",
+      "A type of monitor"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is A deceptive attempt to steal information."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What does Wi-Fi allow devices to do?",
+    "options": [
+      "Connect to a wireless network",
+      "Print without ink in every case",
+      "Increase storage automatically",
+      "Run without power"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Connect to a wireless network."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which key is commonly used to create a new line in a text editor?",
+    "options": [
+      "Enter",
+      "Caps Lock",
+      "Esc",
+      "Num Lock"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Enter."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What is the binary number system based on?",
+    "options": [
+      "Two digits: 0 and 1",
+      "Eight digits",
+      "Ten digits only",
+      "Sixteen letters only"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Two digits: 0 and 1."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which device stores files and can connect through a USB port?",
+    "options": [
+      "USB flash drive",
+      "Monitor",
+      "Microphone",
+      "Projector"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is USB flash drive."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "How many months are in a year?",
+    "options": [
+      "12",
+      "10",
+      "11",
+      "13"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 12."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which shape has three sides?",
+    "options": [
+      "Triangle",
+      "Square",
+      "Pentagon",
+      "Circle"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Triangle."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What is the opposite direction of east?",
+    "options": [
+      "West",
+      "North",
+      "South",
+      "Northeast"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is West."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which tool is commonly used to take a screenshot on Windows?",
+    "options": [
+      "Snipping Tool",
+      "Disk Cleanup only",
+      "Task Scheduler",
+      "Character Map"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Snipping Tool."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What does AI stand for?",
+    "options": [
+      "Artificial intelligence",
+      "Automated internet",
+      "Advanced input",
+      "Applied interface"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Artificial intelligence."
+  },
+  {
+    "category": "Gaming",
+    "question": "In a platform game, what does a checkpoint usually do?",
+    "options": [
+      "Marks a place to resume after failure",
+      "Deletes all progress",
+      "Changes the screen language",
+      "Turns off sound"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Marks a place to resume after failure."
+  },
+  {
+    "category": "Gaming",
+    "question": "What does 'multiplayer' mean?",
+    "options": [
+      "More than one player can participate",
+      "The game has no controls",
+      "Only one person can play",
+      "It has no graphics"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is More than one player can participate."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which genre usually emphasizes planning units and resources?",
+    "options": [
+      "Strategy",
+      "Racing",
+      "Rhythm",
+      "Sports arcade"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Strategy."
+  },
+  {
+    "category": "Gaming",
+    "question": "What does 'respawn' mean in many games?",
+    "options": [
+      "Return to play after being defeated",
+      "Delete a player account",
+      "Pause a download",
+      "Change a keyboard"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Return to play after being defeated."
+  },
+  {
+    "category": "Gaming",
+    "question": "What is downloadable content often abbreviated as?",
+    "options": [
+      "DLC",
+      "CPU",
+      "URL",
+      "RAM"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is DLC."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which classic game involves clearing lines of falling blocks?",
+    "options": [
+      "Tetris",
+      "Pong",
+      "Frogger",
+      "Minesweeper"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Tetris."
+  },
+  {
+    "category": "Gaming",
+    "question": "What does a game difficulty setting usually change?",
+    "options": [
+      "How challenging the game is",
+      "The monitor's physical size",
+      "The keyboard brand",
+      "The file extension"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is How challenging the game is."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which game genre commonly uses cards and turns?",
+    "options": [
+      "Digital card game",
+      "Racing simulator",
+      "First-person shooter only",
+      "Platformer only"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Digital card game."
+  },
+  {
+    "category": "Gaming",
+    "question": "What does an in-game map help a player do?",
+    "options": [
+      "Navigate the game world",
+      "Charge the controller",
+      "Change hardware",
+      "Edit source code automatically"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Navigate the game world."
+  },
+  {
+    "category": "Gaming",
+    "question": "What is a boss battle usually?",
+    "options": [
+      "A fight against a major powerful enemy",
+      "A settings menu",
+      "A tutorial video",
+      "A credits screen"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is A fight against a major powerful enemy."
+  },
+  {
+    "category": "Gaming",
+    "question": "What is a game patch commonly used for?",
+    "options": [
+      "Fixing bugs or making changes",
+      "Cleaning a physical screen",
+      "Charging batteries",
+      "Increasing room temperature"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Fixing bugs or making changes."
+  },
+  {
+    "category": "Gaming",
+    "question": "What does 'open world' usually describe?",
+    "options": [
+      "A world that allows broad exploration",
+      "A game with only one screen",
+      "A game without any movement",
+      "A game played only offline"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is A world that allows broad exploration."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which device gives players audio output?",
+    "options": [
+      "Headphones",
+      "Mouse pad",
+      "Webcam cover",
+      "USB hub only"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Headphones."
+  },
+  {
+    "category": "Gaming",
+    "question": "What is a game mod?",
+    "options": [
+      "A user-made modification",
+      "A type of monitor cable",
+      "A keyboard shortcut only",
+      "A game score"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is A user-made modification."
+  },
+  {
+    "category": "Gaming",
+    "question": "What does 'difficulty: easy' generally indicate?",
+    "options": [
+      "A more accessible challenge level",
+      "The highest challenge level",
+      "No playable character",
+      "A network error"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is A more accessible challenge level."
+  },
+  {
+    "category": "Gaming",
+    "question": "What is a game demo?",
+    "options": [
+      "A limited preview of a game",
+      "A full hardware manual",
+      "A keyboard driver",
+      "A saved password"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is A limited preview of a game."
+  },
+  {
+    "category": "Gaming",
+    "question": "What does 'offline mode' generally mean?",
+    "options": [
+      "Play without an active internet connection where supported",
+      "The screen is always off",
+      "The game cannot be opened",
+      "The keyboard is disconnected"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Play without an active internet connection where supported."
+  },
+  {
+    "category": "Gaming",
+    "question": "What is a controller vibration feature designed to provide?",
+    "options": [
+      "Tactile feedback",
+      "Extra screen pixels",
+      "More storage space",
+      "Faster internet"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Tactile feedback."
+  },
+  {
+    "category": "Gaming",
+    "question": "What is a speedrun?",
+    "options": [
+      "Completing a game as quickly as possible",
+      "Playing with no sound only",
+      "Building a gaming PC",
+      "Designing a game logo"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Completing a game as quickly as possible."
+  },
+  {
+    "category": "Gaming",
+    "question": "Which genre often involves leveling up characters and collecting equipment?",
+    "options": [
+      "Role-playing game",
+      "Word processor",
+      "Weather app",
+      "Spreadsheet"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Role-playing game."
+  },
+  {
+    "category": "Gaming",
+    "question": "What is a hitbox in game development?",
+    "options": [
+      "An area used to detect collisions or hits",
+      "A sound volume slider",
+      "A save-file name",
+      "A monitor refresh button"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is An area used to detect collisions or hits."
+  },
+  {
+    "category": "Gaming",
+    "question": "What does cross-platform play allow?",
+    "options": [
+      "Players on different supported systems to play together",
+      "Only one device to be used",
+      "Games to run without software",
+      "A monitor to work as a keyboard"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Players on different supported systems to play together."
+  },
+  {
+    "category": "Gaming",
+    "question": "What is a game engine?",
+    "options": [
+      "Software framework used to build games",
+      "A physical car engine inside a controller",
+      "A type of game score",
+      "A monitor stand"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Software framework used to build games."
+  },
+  {
+    "category": "Gaming",
+    "question": "What does 'sandbox game' often let players do?",
+    "options": [
+      "Experiment and create with flexible goals",
+      "Only watch a movie",
+      "Never interact with the world",
+      "Use only one fixed move"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Experiment and create with flexible goals."
+  },
+  {
+    "category": "Gaming",
+    "question": "What is a minimap?",
+    "options": [
+      "A small map displayed during gameplay",
+      "A tiny keyboard",
+      "A compressed audio file",
+      "A score counter only"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is A small map displayed during gameplay."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which superhero is known for using a hammer called Mjolnir?",
+    "options": [
+      "Thor",
+      "Hulk",
+      "Black Widow",
+      "Spider-Man"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Thor."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which animated film features emotions named Joy and Sadness?",
+    "options": [
+      "Inside Out",
+      "Shrek",
+      "Cars",
+      "Brave"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Inside Out."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which film series features the character Dominic Toretto?",
+    "options": [
+      "Fast & Furious",
+      "Rocky",
+      "Toy Story",
+      "The Matrix"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Fast & Furious."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "What is the name of the snow queen in Frozen?",
+    "options": [
+      "Elsa",
+      "Anna",
+      "Moana",
+      "Rapunzel"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Elsa."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which superhero is Peter Parker?",
+    "options": [
+      "Spider-Man",
+      "Iron Man",
+      "Ant-Man",
+      "Doctor Strange"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Spider-Man."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which film features a young lion named Simba?",
+    "options": [
+      "The Lion King",
+      "Madagascar",
+      "Bambi",
+      "Zootopia"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is The Lion King."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which series features the fictional school of Starfleet Academy?",
+    "options": [
+      "Star Trek",
+      "Star Wars",
+      "Harry Potter",
+      "Twilight"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Star Trek."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which film series includes the droid R2-D2?",
+    "options": [
+      "Star Wars",
+      "Star Trek",
+      "Transformers",
+      "Men in Black"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Star Wars."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which movie features a character named Forrest Gump?",
+    "options": [
+      "Forrest Gump",
+      "Cast Away",
+      "The Terminal",
+      "Big"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Forrest Gump."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which fictional detective lives at 221B Baker Street?",
+    "options": [
+      "Sherlock Holmes",
+      "Hercule Poirot",
+      "Philip Marlowe",
+      "Nancy Drew"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Sherlock Holmes."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which movie features a rat named Remy who loves cooking?",
+    "options": [
+      "Ratatouille",
+      "Coco",
+      "Up",
+      "Soul"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Ratatouille."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which franchise features Autobots and Decepticons?",
+    "options": [
+      "Transformers",
+      "Jurassic Park",
+      "Shrek",
+      "The Incredibles"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Transformers."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which animated movie features a house lifted by balloons?",
+    "options": [
+      "Up",
+      "Cars",
+      "Frozen",
+      "Finding Dory"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Up."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which character is the ruler of Pride Rock at the start of The Lion King?",
+    "options": [
+      "Mufasa",
+      "Scar",
+      "Timon",
+      "Zazu"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Mufasa."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which movie series features a school of young mutants called X-Men?",
+    "options": [
+      "X-Men",
+      "Fantastic Beasts",
+      "The Hobbit",
+      "Rocky"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is X-Men."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which superhero is Clark Kent?",
+    "options": [
+      "Superman",
+      "Batman",
+      "Flash",
+      "Green Arrow"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Superman."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which film features a magical nanny named Nanny McPhee?",
+    "options": [
+      "Nanny McPhee",
+      "Mary Poppins",
+      "Matilda",
+      "Annie"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Nanny McPhee."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which character is a green ogre in an animated film series?",
+    "options": [
+      "Shrek",
+      "Hiccup",
+      "Po",
+      "Alex"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Shrek."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which film features a robot named Baymax?",
+    "options": [
+      "Big Hero 6",
+      "WALL-E",
+      "Robots",
+      "The Iron Giant"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Big Hero 6."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which movie features a family with superpowers called the Parr family?",
+    "options": [
+      "The Incredibles",
+      "Fantastic Four",
+      "Encanto",
+      "Turning Red"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is The Incredibles."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which fictional archaeologist is famous for a whip and fedora?",
+    "options": [
+      "Indiana Jones",
+      "James Bond",
+      "Jack Ryan",
+      "Rick Blaine"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Indiana Jones."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which movie features a panda named Po who learns kung fu?",
+    "options": [
+      "Kung Fu Panda",
+      "Madagascar",
+      "Mulan",
+      "Brave"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Kung Fu Panda."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which franchise features a school called Camp Half-Blood?",
+    "options": [
+      "Percy Jackson",
+      "Harry Potter",
+      "The Hunger Games",
+      "Divergent"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Percy Jackson."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which movie follows a young clownfish named Nemo?",
+    "options": [
+      "Finding Nemo",
+      "Shark Tale",
+      "Luca",
+      "The Little Mermaid"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Finding Nemo."
+  },
+  {
+    "category": "Movies & Cinema",
+    "question": "Which series features a secret agent named James Bond?",
+    "options": [
+      "James Bond",
+      "Jason Bourne",
+      "Mission: Impossible",
+      "Kingsman"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is James Bond."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is the chemical symbol for sodium?",
+    "options": [
+      "Na",
+      "So",
+      "S",
+      "Sd"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Na."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which organ filters blood to produce urine?",
+    "options": [
+      "Kidneys",
+      "Lungs",
+      "Stomach",
+      "Skin"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Kidneys."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is the closest planet to Earth on average over time among these choices?",
+    "options": [
+      "Mercury",
+      "Neptune",
+      "Saturn",
+      "Uranus"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Mercury."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which vitamin can the body make with help from sunlight?",
+    "options": [
+      "Vitamin D",
+      "Vitamin C",
+      "Vitamin B12",
+      "Vitamin K only"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Vitamin D."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is the SI unit of electric current?",
+    "options": [
+      "Ampere",
+      "Volt",
+      "Watt",
+      "Ohm"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Ampere."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which particle has a negative electric charge?",
+    "options": [
+      "Electron",
+      "Proton",
+      "Neutron",
+      "Photon"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Electron."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is the chemical symbol for iron?",
+    "options": [
+      "Fe",
+      "Ir",
+      "In",
+      "I"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Fe."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which planet has the Great Red Spot?",
+    "options": [
+      "Jupiter",
+      "Mars",
+      "Venus",
+      "Mercury"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Jupiter."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What do we call animals that eat only plants?",
+    "options": [
+      "Herbivores",
+      "Carnivores",
+      "Omnivores",
+      "Decomposers"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Herbivores."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is the change from gas to liquid called?",
+    "options": [
+      "Condensation",
+      "Evaporation",
+      "Melting",
+      "Sublimation"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Condensation."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which part of a cell contains most of its genetic material?",
+    "options": [
+      "Nucleus",
+      "Cell membrane",
+      "Cytoplasm only",
+      "Ribosome"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Nucleus."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which instrument is used to observe distant objects in space?",
+    "options": [
+      "Telescope",
+      "Microscope",
+      "Stethoscope",
+      "Periscope only"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Telescope."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is the hardest naturally occurring mineral on the Mohs scale?",
+    "options": [
+      "Diamond",
+      "Quartz",
+      "Calcite",
+      "Gypsum"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Diamond."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which gas is most abundant in Earth's atmosphere?",
+    "options": [
+      "Nitrogen",
+      "Oxygen",
+      "Carbon dioxide",
+      "Argon"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Nitrogen."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is the study of earthquakes called?",
+    "options": [
+      "Seismology",
+      "Meteorology",
+      "Ecology",
+      "Astronomy"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Seismology."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which organ helps humans digest food by producing bile?",
+    "options": [
+      "Liver",
+      "Heart",
+      "Lungs",
+      "Bladder"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Liver."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is the process plants use to make food with sunlight?",
+    "options": [
+      "Photosynthesis",
+      "Fermentation",
+      "Respiration only",
+      "Transpiration"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Photosynthesis."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which planet is tilted on its side to an extreme degree?",
+    "options": [
+      "Uranus",
+      "Earth",
+      "Mars",
+      "Mercury"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Uranus."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is the main energy source for Earth's climate system?",
+    "options": [
+      "The Sun",
+      "The Moon",
+      "Earth's magnetic field",
+      "Ocean tides only"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is The Sun."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which unit measures frequency?",
+    "options": [
+      "Hertz",
+      "Newton",
+      "Joule",
+      "Pascal"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Hertz."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which type of rock forms when magma or lava cools?",
+    "options": [
+      "Igneous",
+      "Sedimentary",
+      "Metamorphic",
+      "Organic"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Igneous."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which part of the eye controls how much light enters?",
+    "options": [
+      "Iris",
+      "Retina",
+      "Optic nerve",
+      "Cornea only"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Iris."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is the chemical symbol for carbon?",
+    "options": [
+      "C",
+      "Ca",
+      "Co",
+      "Cr"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is C."
+  },
+  {
+    "category": "Science & Space",
+    "question": "What is the name of the force that opposes motion between surfaces?",
+    "options": [
+      "Friction",
+      "Gravity only",
+      "Buoyancy",
+      "Radiation"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Friction."
+  },
+  {
+    "category": "Science & Space",
+    "question": "Which planet is known for having the most prominent visible ring system?",
+    "options": [
+      "Saturn",
+      "Earth",
+      "Mars",
+      "Venus"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Saturn."
+  },
+  {
+    "category": "Sports",
+    "question": "In tennis, what score comes after 30 in a standard game?",
+    "options": [
+      "40",
+      "45",
+      "50",
+      "Love"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 40."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport is associated with the Stanley Cup?",
+    "options": [
+      "Ice hockey",
+      "Basketball",
+      "Cricket",
+      "Baseball"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Ice hockey."
+  },
+  {
+    "category": "Sports",
+    "question": "How many players are on court for one team in standard doubles badminton?",
+    "options": [
+      "2",
+      "1",
+      "3",
+      "4"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 2."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport uses a foil, épée or sabre?",
+    "options": [
+      "Fencing",
+      "Archery",
+      "Cycling",
+      "Rowing"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Fencing."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport is played in the Super Bowl?",
+    "options": [
+      "American football",
+      "Soccer",
+      "Rugby league",
+      "Baseball"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is American football."
+  },
+  {
+    "category": "Sports",
+    "question": "What is the term for zero points in tennis?",
+    "options": [
+      "Love",
+      "Nil",
+      "Blank",
+      "Duck"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Love."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport features a balance beam?",
+    "options": [
+      "Gymnastics",
+      "Fencing",
+      "Golf",
+      "Sailing"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Gymnastics."
+  },
+  {
+    "category": "Sports",
+    "question": "How many bases are on a standard baseball diamond?",
+    "options": [
+      "4",
+      "3",
+      "5",
+      "6"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 4."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport uses a caddie?",
+    "options": [
+      "Golf",
+      "Swimming",
+      "Volleyball",
+      "Boxing"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Golf."
+  },
+  {
+    "category": "Sports",
+    "question": "What is the name of the international football governing body commonly called FIFA?",
+    "options": [
+      "Fédération Internationale de Football Association",
+      "Federation of International Field Athletics",
+      "Football Institute for Athletic Awards",
+      "Federation of Indoor Football Associations"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Fédération Internationale de Football Association."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport is played at the French Open?",
+    "options": [
+      "Tennis",
+      "Cricket",
+      "Ice hockey",
+      "Rugby"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Tennis."
+  },
+  {
+    "category": "Sports",
+    "question": "What is the standard shape of a boxing ring's fighting area?",
+    "options": [
+      "Square",
+      "Circular",
+      "Triangular",
+      "Hexagonal"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Square."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport includes a vault, rings and parallel bars?",
+    "options": [
+      "Artistic gymnastics",
+      "Badminton",
+      "Cycling",
+      "Curling"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Artistic gymnastics."
+  },
+  {
+    "category": "Sports",
+    "question": "Which country is strongly associated with sumo wrestling?",
+    "options": [
+      "Japan",
+      "Brazil",
+      "Canada",
+      "Spain"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Japan."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport has a goalkeeper and penalty corners?",
+    "options": [
+      "Field hockey",
+      "Tennis",
+      "Golf",
+      "Table tennis"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Field hockey."
+  },
+  {
+    "category": "Sports",
+    "question": "In cricket, what is a score of 100 runs by a batter called?",
+    "options": [
+      "A century",
+      "A hat-trick",
+      "A maiden",
+      "A wicket"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is A century."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport uses the terms strike and spare?",
+    "options": [
+      "Ten-pin bowling",
+      "Rugby",
+      "Tennis",
+      "Swimming"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Ten-pin bowling."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport is associated with the yellow jersey in the Tour de France?",
+    "options": [
+      "Cycling",
+      "Marathon running",
+      "Ski jumping",
+      "Rowing"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Cycling."
+  },
+  {
+    "category": "Sports",
+    "question": "How many players are on the field per team in standard association football?",
+    "options": [
+      "11",
+      "9",
+      "10",
+      "12"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 11."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport uses a shuttlecock and a racket?",
+    "options": [
+      "Badminton",
+      "Squash",
+      "Golf",
+      "Baseball"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Badminton."
+  },
+  {
+    "category": "Sports",
+    "question": "What is the term for three consecutive strikes in bowling?",
+    "options": [
+      "Turkey",
+      "Eagle",
+      "Birdie",
+      "Triple play"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Turkey."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport includes the apparatus called a vaulting table?",
+    "options": [
+      "Gymnastics",
+      "Wrestling",
+      "Fencing",
+      "Archery"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Gymnastics."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport is played in the Davis Cup?",
+    "options": [
+      "Men's team tennis",
+      "Cricket",
+      "Basketball",
+      "Golf"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Men's team tennis."
+  },
+  {
+    "category": "Sports",
+    "question": "What is the maximum number of points from a single normal basketball field goal outside the three-point arc?",
+    "options": [
+      "3",
+      "2",
+      "4",
+      "1"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 3."
+  },
+  {
+    "category": "Sports",
+    "question": "Which sport uses a puck and sticks on ice?",
+    "options": [
+      "Ice hockey",
+      "Field hockey",
+      "Lacrosse",
+      "Polo"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Ice hockey."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which Indian city is famous for the Gateway of India monument?",
+    "options": [
+      "Mumbai",
+      "Delhi",
+      "Chandigarh",
+      "Indore"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Mumbai."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which Indian state is home to the Kaziranga National Park?",
+    "options": [
+      "Assam",
+      "Goa",
+      "Punjab",
+      "Rajasthan"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Assam."
+  },
+  {
+    "category": "India & Geography",
+    "question": "What is the capital of Karnataka?",
+    "options": [
+      "Bengaluru",
+      "Mangaluru",
+      "Mysuru",
+      "Hubballi"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Bengaluru."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which Indian festival is associated with colours?",
+    "options": [
+      "Holi",
+      "Diwali",
+      "Onam",
+      "Eid al-Fitr"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Holi."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which sea lies to the west of India?",
+    "options": [
+      "Arabian Sea",
+      "Bay of Bengal",
+      "South China Sea",
+      "Coral Sea"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Arabian Sea."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which Indian state is known for the city of Jaipur?",
+    "options": [
+      "Rajasthan",
+      "Gujarat",
+      "Bihar",
+      "Odisha"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Rajasthan."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which monument in Delhi commemorates Indian soldiers and is shaped like an arch?",
+    "options": [
+      "India Gate",
+      "Charminar",
+      "Hawa Mahal",
+      "Sanchi Stupa"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is India Gate."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which country is famous for the ancient city of Petra?",
+    "options": [
+      "Jordan",
+      "Greece",
+      "Mexico",
+      "Vietnam"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Jordan."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which is the capital of France?",
+    "options": [
+      "Paris",
+      "Lyon",
+      "Marseille",
+      "Nice"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Paris."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which river is associated with the city of London?",
+    "options": [
+      "Thames",
+      "Seine",
+      "Danube",
+      "Rhine"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Thames."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which country has the city of Seoul as its capital?",
+    "options": [
+      "South Korea",
+      "North Korea",
+      "Thailand",
+      "Vietnam"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is South Korea."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which continent is the Sahara Desert located in?",
+    "options": [
+      "Africa",
+      "Asia",
+      "Australia",
+      "Europe"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Africa."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which Indian state is known for the Sun Temple at Konark?",
+    "options": [
+      "Odisha",
+      "Kerala",
+      "Punjab",
+      "Nagaland"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Odisha."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which is the capital of Australia?",
+    "options": [
+      "Canberra",
+      "Sydney",
+      "Melbourne",
+      "Perth"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Canberra."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which country is shaped like a boot on many maps?",
+    "options": [
+      "Italy",
+      "Portugal",
+      "Norway",
+      "Chile"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Italy."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which Indian state is known for the city of Gangtok?",
+    "options": [
+      "Sikkim",
+      "Manipur",
+      "Haryana",
+      "Goa"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Sikkim."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which is the world's largest hot desert?",
+    "options": [
+      "Sahara",
+      "Gobi",
+      "Kalahari",
+      "Mojave"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Sahara."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which ocean is between Africa and Australia?",
+    "options": [
+      "Indian Ocean",
+      "Atlantic Ocean",
+      "Arctic Ocean",
+      "Southern Ocean"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Indian Ocean."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which Indian city is known as the Pink City?",
+    "options": [
+      "Jaipur",
+      "Jodhpur",
+      "Udaipur",
+      "Bikaner"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Jaipur."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which country is home to Machu Picchu?",
+    "options": [
+      "Peru",
+      "Spain",
+      "India",
+      "Ethiopia"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Peru."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which is the capital of Canada?",
+    "options": [
+      "Ottawa",
+      "Toronto",
+      "Vancouver",
+      "Montreal"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Ottawa."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which Indian state is known for the classical dance Bharatanatyam's historical roots?",
+    "options": [
+      "Tamil Nadu",
+      "Punjab",
+      "Assam",
+      "Himachal Pradesh"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Tamil Nadu."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which country has the city of Nairobi as its capital?",
+    "options": [
+      "Kenya",
+      "Nigeria",
+      "Ghana",
+      "Uganda"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Kenya."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which mountain range includes Mount Everest?",
+    "options": [
+      "Himalayas",
+      "Andes",
+      "Alps",
+      "Rockies"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Himalayas."
+  },
+  {
+    "category": "India & Geography",
+    "question": "Which Indian state is famous for the Konkan coast and Goa is located within it?",
+    "options": [
+      "Goa is a separate state",
+      "Maharashtra only",
+      "Karnataka only",
+      "Kerala only"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Goa is a separate state."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What does RAM stand for in computing?",
+    "options": [
+      "Random Access Memory",
+      "Read All Modules",
+      "Rapid Application Machine",
+      "Remote Access Monitor"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Random Access Memory."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which symbol is commonly used for multiplication?",
+    "options": [
+      "×",
+      "÷",
+      "%",
+      "="
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is ×."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "How many degrees are in a right angle?",
+    "options": [
+      "90",
+      "45",
+      "180",
+      "360"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 90."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What is the square root of 81?",
+    "options": [
+      "9",
+      "8",
+      "7",
+      "6"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 9."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which is a common format for a portable document?",
+    "options": [
+      "PDF",
+      "MP4",
+      "PNG",
+      "WAV"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is PDF."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which of these is an operating system?",
+    "options": [
+      "Windows",
+      "Google Search",
+      "HTML",
+      "Bluetooth"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Windows."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What does GPS help determine?",
+    "options": [
+      "Location and navigation",
+      "Screen brightness",
+      "Battery chemistry",
+      "Typing speed"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Location and navigation."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What does Ctrl+C commonly do on Windows?",
+    "options": [
+      "Copy selected content",
+      "Close the computer",
+      "Open settings",
+      "Print a page"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Copy selected content."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What does Ctrl+V commonly do on Windows?",
+    "options": [
+      "Paste copied content",
+      "Undo an action",
+      "Save a file",
+      "Refresh a page"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Paste copied content."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which number is an even number?",
+    "options": [
+      "24",
+      "17",
+      "31",
+      "45"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 24."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "How many seconds are in one minute?",
+    "options": [
+      "60",
+      "30",
+      "100",
+      "90"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 60."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which is a renewable energy source?",
+    "options": [
+      "Solar power",
+      "Coal",
+      "Petroleum",
+      "Natural gas"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Solar power."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which device connects a local network to the internet in many homes?",
+    "options": [
+      "Router",
+      "Keyboard",
+      "Monitor",
+      "Scanner"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Router."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What is the main purpose of antivirus software?",
+    "options": [
+      "Detect and help remove malicious software",
+      "Increase monitor resolution",
+      "Create spreadsheets",
+      "Replace the operating system"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Detect and help remove malicious software."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which one is a search engine?",
+    "options": [
+      "Google",
+      "Windows Explorer",
+      "Bluetooth",
+      "PowerPoint"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Google."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What does HTML stand for?",
+    "options": [
+      "HyperText Markup Language",
+      "High Transfer Machine Link",
+      "Hyperlink Text Management Logic",
+      "Home Tool Markup List"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is HyperText Markup Language."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which unit is used to measure electrical power?",
+    "options": [
+      "Watt",
+      "Volt",
+      "Ampere",
+      "Ohm"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Watt."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What is the perimeter of a square with each side 4 cm?",
+    "options": [
+      "16 cm",
+      "8 cm",
+      "12 cm",
+      "20 cm"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 16 cm."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What is 12 multiplied by 12?",
+    "options": [
+      "144",
+      "124",
+      "132",
+      "154"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is 144."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which file type is commonly used for photographs?",
+    "options": [
+      ".jpg",
+      ".html",
+      ".exe",
+      ".csv"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is .jpg."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which technology is commonly used for short-range wireless connections between headphones and phones?",
+    "options": [
+      "Bluetooth",
+      "Ethernet only",
+      "VGA",
+      "HDMI"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Bluetooth."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What does an email attachment allow you to do?",
+    "options": [
+      "Send a file with an email",
+      "Increase internet speed",
+      "Change your email address automatically",
+      "Block every spam message"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Send a file with an email."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "Which of these is a programming language?",
+    "options": [
+      "Python",
+      "HTML only",
+      "JPEG",
+      "Wi-Fi"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Python."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What is a strong account password generally like?",
+    "options": [
+      "Long and unique",
+      "The word 'password'",
+      "Your username repeated",
+      "The number 123456"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Long and unique."
+  },
+  {
+    "category": "General Knowledge & Technology",
+    "question": "What does cloud storage let users do?",
+    "options": [
+      "Store files on remote internet-connected servers",
+      "Store files only on paper",
+      "Increase a screen's physical size",
+      "Turn off all backups"
+    ],
+    "answer": 0,
+    "explanation": "The correct answer is Store files on remote internet-connected servers."
+  }
+];
+
+</script>
+  <script>
+    const ROUND_SIZE = 10;
+    const POINTS_PER_ANSWER = 10;
+    let roundQuestions = [];
+    let currentQuestion = 0;
+    let totalScore = 0;
+    let answered = false;
+
+    const questionCount = document.getElementById("question-count");
+    const scoreText = document.getElementById("score");
+    const questionText = document.getElementById("question");
+    const categoryText = document.getElementById("category");
+    const optionsContainer = document.getElementById("options");
+    const feedback = document.getElementById("feedback");
+    const nextButton = document.getElementById("next-button");
+    const progressBar = document.getElementById("progress-bar");
+    const quizScreen = document.getElementById("quiz-screen");
+    const resultScreen = document.getElementById("result");
+
+    function shuffle(array) {
+      const copy = [...array];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function startRound() {
+      if (!Array.isArray(QUESTION_BANK) || QUESTION_BANK.length < ROUND_SIZE) {
+        questionText.textContent = "Question bank could not be loaded.";
+        feedback.textContent = "Please make sure you are using the complete quiz.html file.";
+        nextButton.disabled = true;
+        return;
+      }
+      roundQuestions = shuffle(QUESTION_BANK).slice(0, ROUND_SIZE).map(q => {
+        const answerText = q.options[q.answer];
+        const shuffledOptions = shuffle(q.options);
+        return {
+          ...q,
+          options: shuffledOptions,
+          answer: shuffledOptions.indexOf(answerText)
+        };
+      });
+      currentQuestion = 0;
+      totalScore = 0;
+      quizScreen.classList.remove("hidden");
+      resultScreen.classList.add("hidden");
+      showQuestion();
+    }
+
+    function showQuestion() {
+      answered = false;
+      const q = roundQuestions[currentQuestion];
+      questionCount.textContent = `Question ${currentQuestion + 1}/${ROUND_SIZE}`;
+      scoreText.textContent = `Score: ${totalScore}`;
+      categoryText.textContent = q.category;
+      questionText.textContent = q.question;
+      progressBar.style.width = `${(currentQuestion / ROUND_SIZE) * 100}%`;
+      optionsContainer.innerHTML = "";
+      feedback.textContent = "";
+      nextButton.disabled = true;
+      nextButton.textContent = "Choose an answer";
+
+      q.options.forEach((option, index) => {
+        const button = document.createElement("button");
+        button.className = "option";
+        button.textContent = `${String.fromCharCode(65 + index)}. ${option}`;
+        button.addEventListener("click", () => selectAnswer(index));
+        optionsContainer.appendChild(button);
+      });
+    }
+
+    function selectAnswer(selectedIndex) {
+      if (answered) return;
+      answered = true;
+      const q = roundQuestions[currentQuestion];
+      const buttons = [...optionsContainer.querySelectorAll(".option")];
+      buttons.forEach(button => button.disabled = true);
+
+      if (selectedIndex === q.answer) {
+        totalScore += POINTS_PER_ANSWER;
+        buttons[selectedIndex].classList.add("correct");
+        feedback.textContent = `✅ Correct! +${POINTS_PER_ANSWER} points. ${q.explanation}`;
+      } else {
+        buttons[selectedIndex].classList.add("wrong");
+        buttons[q.answer].classList.add("correct");
+        feedback.textContent = `❌ Not quite. The correct answer is "${q.options[q.answer]}". ${q.explanation}`;
+      }
+
+      scoreText.textContent = `Score: ${totalScore}`;
+      nextButton.disabled = false;
+      nextButton.textContent = currentQuestion === ROUND_SIZE - 1 ? "See Results" : "Next Question";
+    }
+
+    function showResults() {
+      quizScreen.classList.add("hidden");
+      resultScreen.classList.remove("hidden");
+      progressBar.style.width = "100%";
+      document.getElementById("final-score").textContent = `${totalScore}/100`;
+
+      let message;
+      if (totalScore === 100) message = "Perfect score! Amazing work! 🏆";
+      else if (totalScore >= 70) message = "Great job! You know your stuff! 🎉";
+      else if (totalScore >= 40) message = "Nice effort! Play another round to improve.";
+      else message = "Keep practising — your next round could be better!";
+      document.getElementById("result-message").textContent = message;
+    }
+
+    nextButton.addEventListener("click", () => {
+      if (!answered) return;
+      if (currentQuestion < ROUND_SIZE - 1) {
+        currentQuestion++;
+        showQuestion();
+      } else {
+        showResults();
+      }
+    });
+
+    document.getElementById("play-again").addEventListener("click", startRound);
+    startRound();
+  </script>
+</body>
+</html>

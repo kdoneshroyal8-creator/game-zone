@@ -1,0 +1,342 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snake Game | Game Zone</title>
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: Arial, sans-serif;
+  color: #f5f5f5;
+  background: #10151f;
+}
+
+.game {
+  width: 100%;
+  max-width: 500px;
+  text-align: center;
+}
+
+h1 { color: #55ee83; }
+.subtitle, .help { color: #b7c1ce; }
+
+.scoreboard {
+  display: flex;
+  justify-content: space-between;
+  margin: 16px 0;
+  font-size: 18px;
+}
+
+.board-wrap { position: relative; }
+
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #080d12;
+  border: 2px solid #55ee83;
+  border-radius: 10px;
+}
+
+#message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 15px;
+  background: #080d12eF;
+  border-radius: 10px;
+}
+
+#message.hidden { display: none; }
+
+button {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #55ee83;
+  color: #10151f;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(3, 60px);
+  justify-content: center;
+  gap: 8px;
+  margin: 18px auto;
+}
+
+.controls button { font-size: 22px; padding: 10px 0; }
+.empty { visibility: hidden; }
+
+.back {
+  display: inline-block;
+  margin-top: 12px;
+  color: #55ee83;
+  text-decoration: none;
+}
+</style>
+</head>
+<body>
+<main class="game">
+  <h1>🐍 Snake Game</h1>
+  <p class="subtitle">Welcome to Game Zone Arcade!</p>
+
+  <div class="scoreboard">
+    <span>Score: <strong id="score">0</strong></span>
+    <span>Best: <strong id="best">0</strong></span>
+  </div>
+
+  <div class="board-wrap">
+    <canvas id="board" width="400" height="400"></canvas>
+    <div id="message">
+      <h2 id="messageTitle">Ready to Play?</h2>
+      <p id="messageText">Eat the red food and avoid the walls!</p>
+      <button id="startBtn">Start Game</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <span class="empty"></span>
+    <button data-dir="up">⬆️</button>
+    <span class="empty"></span>
+    <button data-dir="left">⬅️</button>
+    <button data-dir="down">⬇️</button>
+    <button data-dir="right">➡️</button>
+  </div>
+
+  <p class="help">Use your keyboard arrow keys or WASD.</p>
+  <a class="back" href="index.html">← Back to Game Zone</a>
+</main>
+
+<script>
+const canvas = document.getElementById("board");
+const ctx = canvas.getContext("2d");
+const cell = 20;
+const total = 20;
+
+const scoreEl = document.getElementById("score");
+const bestEl = document.getElementById("best");
+const message = document.getElementById("message");
+const title = document.getElementById("messageTitle");
+const messageText = document.getElementById("messageText");
+const startBtn = document.getElementById("startBtn");
+
+let snake, food, direction, nextDirection;
+let score = 0;
+let best = 0;
+let running = false;
+let timer = null;
+
+try {
+  best = Number(localStorage.getItem("snakeBestScore")) || 0;
+} catch (e) {}
+
+bestEl.textContent = best;
+
+function makeFood() {
+  let spot;
+  do {
+    spot = {
+      x: Math.floor(Math.random() * total),
+      y: Math.floor(Math.random() * total)
+    };
+  } while (snake.some(part =>
+    part.x === spot.x && part.y === spot.y
+  ));
+  return spot;
+}
+
+function draw() {
+  ctx.fillStyle = "#080d12";
+  ctx.fillRect(0, 0, 400, 400);
+
+  ctx.strokeStyle = "#17232b";
+  for (let i = 0; i <= total; i++) {
+    ctx.beginPath();
+    ctx.moveTo(i * cell, 0);
+    ctx.lineTo(i * cell, 400);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0, i * cell);
+    ctx.lineTo(400, i * cell);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = "#ff5252";
+  ctx.beginPath();
+  ctx.arc(
+    food.x * cell + 10,
+    food.y * cell + 10,
+    7, 0, Math.PI * 2
+  );
+  ctx.fill();
+
+  snake.forEach((part, i) => {
+    ctx.fillStyle = i === 0 ? "#a4ffb6" : "#42d96b";
+    ctx.fillRect(
+      part.x * cell + 2,
+      part.y * cell + 2,
+      cell - 4,
+      cell - 4
+    );
+  });
+}
+
+function startGame() {
+  clearInterval(timer);
+
+  snake = [
+    { x: 10, y: 10 },
+    { x: 9, y: 10 },
+    { x: 8, y: 10 }
+  ];
+
+  direction = { x: 1, y: 0 };
+  nextDirection = { x: 1, y: 0 };
+  score = 0;
+  scoreEl.textContent = score;
+  food = makeFood();
+  running = true;
+
+  message.classList.add("hidden");
+  draw();
+  timer = setInterval(tick, 130);
+}
+
+function endGame() {
+  running = false;
+  clearInterval(timer);
+  title.textContent = "Game Over!";
+  messageText.textContent = "Your score: " + score + ". Try again!";
+  startBtn.textContent = "Play Again";
+  message.classList.remove("hidden");
+}
+
+function tick() {
+  direction = nextDirection;
+
+  const head = {
+    x: snake[0].x + direction.x,
+    y: snake[0].y + direction.y
+  };
+
+  const eating = head.x === food.x && head.y === food.y;
+
+  if (
+    head.x < 0 || head.x >= total ||
+    head.y < 0 || head.y >= total
+  ) {
+    endGame();
+    return;
+  }
+
+  const body = eating ? snake : snake.slice(0, -1);
+  if (body.some(p => p.x === head.x && p.y === head.y)) {
+    endGame();
+    return;
+  }
+
+  snake.unshift(head);
+
+  if (eating) {
+    score += 10;
+    scoreEl.textContent = score;
+
+    if (score > best) {
+      best = score;
+      bestEl.textContent = best;
+      try {
+        localStorage.setItem("snakeBestScore", best);
+      } catch (e) {}
+    }
+
+    if (snake.length === total * total) {
+      running = false;
+      clearInterval(timer);
+      title.textContent = "You Win!";
+      messageText.textContent = "Amazing! You filled the board!";
+      startBtn.textContent = "Play Again";
+      message.classList.remove("hidden");
+      draw();
+      return;
+    }
+
+    food = makeFood();
+  } else {
+    snake.pop();
+  }
+
+  draw();
+}
+
+function changeDirection(name) {
+  if (!running) return;
+
+  const dirs = {
+    up: { x: 0, y: -1 },
+    down: { x: 0, y: 1 },
+    left: { x: -1, y: 0 },
+    right: { x: 1, y: 0 }
+  };
+
+  const next = dirs[name];
+  if (!next) return;
+
+  if (
+    next.x === -direction.x &&
+    next.y === -direction.y
+  ) return;
+
+  nextDirection = next;
+}
+
+document.addEventListener("keydown", event => {
+  const keys = {
+    ArrowUp: "up", w: "up", W: "up",
+    ArrowDown: "down", s: "down", S: "down",
+    ArrowLeft: "left", a: "left", A: "left",
+    ArrowRight: "right", d: "right", D: "right"
+  };
+
+  if (keys[event.key]) {
+    event.preventDefault();
+    changeDirection(keys[event.key]);
+  }
+});
+
+document.querySelectorAll("[data-dir]").forEach(button => {
+  button.addEventListener("click", () => {
+    changeDirection(button.dataset.dir);
+  });
+});
+
+startBtn.addEventListener("click", startGame);
+
+snake = [
+  { x: 10, y: 10 },
+  { x: 9, y: 10 },
+  { x: 8, y: 10 }
+];
+food = { x: 14, y: 10 };
+direction = { x: 1, y: 0 };
+draw();
+</script>
+</body>
+</html>
